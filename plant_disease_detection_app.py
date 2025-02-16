@@ -5,7 +5,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import os
 
-# ✅ Sidebar for model file uploads (New Feature)
+# ✅ Sidebar for model file uploads
 st.sidebar.title("Upload & Merge Model Files")
 
 # Upload both model parts
@@ -32,7 +32,9 @@ if part1 and part2:
     st.sidebar.success("Files merged into model.h5 successfully!")
 
 # ✅ Load the trained model only if it exists
-model_path = "model.h5"  # Ensure this is the correct path
+model_path = "model.h5"
+model = None  # Initialize model as None
+
 if os.path.exists(model_path):
     model = load_model(model_path)
     st.sidebar.success("Model loaded successfully!")
@@ -45,8 +47,9 @@ labels = {0: 'Healthy', 1: 'Powdery Mildew', 2: 'Rust'}
 # ✅ Function to make predictions
 def predict_disease(image):
     img = load_img(image, target_size=(224, 224))  # Resize image
-    img_array = img_to_array(img) / 255.0  # Normalize
-    img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions for prediction
+    img_array = img_to_array(img)  # Convert to array
+    img_array = (img_array - img_array.mean()) / img_array.std()  # Normalize correctly
+    img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions for model input
     
     predictions = model.predict(img_array)[0]  # Get predictions
     predicted_class = np.argmax(predictions)  # Get highest probability class
@@ -66,7 +69,7 @@ if uploaded_file is not None:
     st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
     
     # Make prediction
-    if os.path.exists(model_path):
+    if model:
         predicted_label, confidence = predict_disease(uploaded_file)
         st.success(f"Prediction: **{predicted_label}**")
         st.info(f"Confidence: **{confidence:.2f}%**")
