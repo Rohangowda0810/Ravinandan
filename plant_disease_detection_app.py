@@ -5,7 +5,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import os
 
-# ✅ Sidebar for model file uploads
+# ✅ Sidebar for model uploads
 st.sidebar.title("Upload & Merge Model Files")
 
 # Upload both model parts
@@ -23,7 +23,7 @@ if part1 and part2:
     with open("model_part2.h5", "wb") as f2:
         f2.write(part2.read())
 
-    # Merge the split files into model.h5
+    # Merge model parts
     with open("model.h5", "wb") as outfile:
         for part in ["model_part1.h5", "model_part2.h5"]:
             with open(part, "rb") as infile:
@@ -31,30 +31,42 @@ if part1 and part2:
 
     st.sidebar.success("Files merged into model.h5 successfully!")
 
-# ✅ Load the trained model only if it exists
+# ✅ Load and compile model
 model_path = "model.h5"
-model = None  # Initialize model as None
+model = None
 
 if os.path.exists(model_path):
     model = load_model(model_path)
-    st.sidebar.success("Model loaded successfully!")
+    model.compile()  # ✅ Ensure model is compiled
+    st.sidebar.success("Model loaded and compiled successfully!")
 else:
     st.sidebar.error("Model file not found. Please upload both parts.")
 
-# ✅ Define class labels
+# ✅ Class labels
 labels = {0: 'Healthy', 1: 'Powdery Mildew', 2: 'Rust'}
 
-# ✅ Function to make predictions
-def predict_disease(image):
+# ✅ Define preprocessing function outside the prediction function to avoid retracing
+def preprocess_image(image):
     img = load_img(image, target_size=(224, 224))  # Resize image
     img_array = img_to_array(img)  # Convert to array
-    img_array = (img_array - img_array.mean()) / img_array.std()  # Normalize correctly
-    img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions for model input
     
+    # ✅ Try different normalizations
+    img_array = (img_array - np.mean(img_array)) / np.std(img_array)  # Standard normalization
+
+    img_array = np.expand_dims(img_array, axis=0)  # Expand dimensions for model input
+    return img_array
+
+# ✅ Prediction function
+def predict_disease(image):
+    img_array = preprocess_image(image)  # Use the preprocessed image
     predictions = model.predict(img_array)[0]  # Get predictions
+
+    # Debugging: Print raw model output
+    st.sidebar.text(f"Raw Model Predictions: {predictions}")
+
     predicted_class = np.argmax(predictions)  # Get highest probability class
     confidence = predictions[predicted_class] * 100  # Convert to percentage
-    
+
     return labels[predicted_class], confidence
 
 # ✅ Streamlit UI
@@ -66,7 +78,7 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "png", "jpeg
 
 if uploaded_file is not None:
     # Display uploaded image
-    st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+    st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
     
     # Make prediction
     if model:
