@@ -1,12 +1,13 @@
 import streamlit as st
 import numpy as np
-import cv2
 from PIL import Image
 import tensorflow as tf
-from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input, decode_predictions
+from tensorflow.keras.models import load_model
+import cv2
 
-# Load MobileNetV2 pre-trained model
-model = MobileNetV2(weights="imagenet")
+# Load your custom-trained plant disease model (example path)
+# If you don't have a custom model, train one using a dataset like PlantVillage.
+model = load_model("path_to_your_plant_disease_model.h5")
 
 # Title of the app
 st.title("🌿 Plant Disease Detection App")
@@ -15,7 +16,7 @@ st.title("🌿 Plant Disease Detection App")
 uploaded_image = st.file_uploader("📸 Upload a Plant Image", type=["jpg", "jpeg", "png"])
 
 if uploaded_image:
-    # Open the image
+    # Open the uploaded image
     image = Image.open(uploaded_image)
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
@@ -23,7 +24,6 @@ if uploaded_image:
     image_resized = image.resize((224, 224))  # Resize image to model's input size
     image_array = np.array(image_resized) / 255.0  # Normalize pixel values
     image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
-    image_array = preprocess_input(image_array)  # Apply preprocessing for MobileNetV2
 
     # Display the processed image
     st.image(image_resized, caption="Processed Image (Resized)", use_column_width=True)
@@ -34,18 +34,18 @@ if uploaded_image:
     edges = cv2.Canny(gray_image, threshold1=100, threshold2=200)  # Apply Canny edge detection
     st.image(edges, caption="Edge Detection", use_column_width=True, channels="GRAY")
 
-    # Prediction using the model (MobileNetV2)
+    # Prediction using the custom model
     predictions = model.predict(image_array)
-    decoded_predictions = decode_predictions(predictions, top=3)[0]  # Get top 3 predictions
+    
+    # Assuming the model returns class indices for Rust, Powdery Mildew, Healthy
+    # Example: [Rust, Powdery Mildew, Healthy] = [0, 1, 2]
+    class_labels = ["Healthy", "Rust", "Powdery Mildew"]
+    
+    # Get the predicted class index (assuming output is in softmax probabilities)
+    predicted_class = np.argmax(predictions, axis=1)[0]
+    predicted_label = class_labels[predicted_class]
+    predicted_confidence = np.max(predictions) * 100  # Confidence of the prediction
 
-    # Show predictions
-    st.write("🔍 **Predictions:**")
-    for i, (imagenet_id, label, score) in enumerate(decoded_predictions):
-        st.write(f"{i+1}. {label} ({score*100:.2f}%)")
-
-    # If you want to apply disease detection, this is where you'd load your own model
-    # Example: 
-    # model = load_model("your_plant_disease_model.h5")
-    # disease_predictions = model.predict(image_array)
-    # st.write(f"Detected Disease: {disease_predictions}")
+    # Show the predicted result
+    st.write(f"🔍 **Prediction Result**: {predicted_label} ({predicted_confidence:.2f}%)")
 
