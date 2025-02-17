@@ -1,54 +1,51 @@
 import streamlit as st
-from tensorflow.keras.models import load_model
+import numpy as np
+import cv2
+from PIL import Image
 import tensorflow as tf
+from tensorflow.keras.applications.mobilenet_v2 import MobileNetV2, preprocess_input, decode_predictions
+
+# Load MobileNetV2 pre-trained model
+model = MobileNetV2(weights="imagenet")
 
 # Title of the app
-st.title("Plant Disease Detection App")
+st.title("🌿 Plant Disease Detection App")
 
-# File uploader for model architecture (.h5)
-model_file = st.file_uploader("Upload Model Architecture (.h5)", type=["h5"])
+# File uploader for image (supports jpg, png, jpeg)
+uploaded_image = st.file_uploader("📸 Upload a Plant Image", type=["jpg", "jpeg", "png"])
 
-# File uploader for model weights (.h5)
-weights_file = st.file_uploader("Upload Model Weights (.h5)", type=["h5"])
+if uploaded_image:
+    # Open the image
+    image = Image.open(uploaded_image)
+    st.image(image, caption="Uploaded Image", use_column_width=True)
 
-# Button to trigger model loading after files are uploaded
-if model_file and weights_file:
-    try:
-        # Load the model architecture without weights
-        model = load_model(model_file, compile=False)
+    # Preprocess the image (resize and normalize)
+    image_resized = image.resize((224, 224))  # Resize image to model's input size
+    image_array = np.array(image_resized) / 255.0  # Normalize pixel values
+    image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
+    image_array = preprocess_input(image_array)  # Apply preprocessing for MobileNetV2
 
-        # Load the weights separately
-        model.load_weights(weights_file)
+    # Display the processed image
+    st.image(image_resized, caption="Processed Image (Resized)", use_column_width=True)
 
-        # Output message
-        st.write("Model and weights loaded successfully!")
+    # Edge Detection Filter (Optional)
+    image_cv = np.array(image_resized)
+    gray_image = cv2.cvtColor(image_cv, cv2.COLOR_RGB2GRAY)  # Convert to grayscale
+    edges = cv2.Canny(gray_image, threshold1=100, threshold2=200)  # Apply Canny edge detection
+    st.image(edges, caption="Edge Detection", use_column_width=True, channels="GRAY")
 
-        # Model summary (for debugging and confirmation)
-        st.text_area("Model Summary", model.summary(), height=200)
+    # Prediction using the model (MobileNetV2)
+    predictions = model.predict(image_array)
+    decoded_predictions = decode_predictions(predictions, top=3)[0]  # Get top 3 predictions
 
-        # Example: You can now use the model to make predictions if you have input data
-        # For example, an image upload for prediction:
+    # Show predictions
+    st.write("🔍 **Predictions:**")
+    for i, (imagenet_id, label, score) in enumerate(decoded_predictions):
+        st.write(f"{i+1}. {label} ({score*100:.2f}%)")
 
-        uploaded_image = st.file_uploader("Upload an image for prediction", type=["jpg", "png", "jpeg"])
-
-        if uploaded_image:
-            # Preprocess the image for prediction (resize, normalization, etc.)
-            # Assuming image preprocessing code is defined here:
-            # You can use PIL or OpenCV to preprocess the image
-            from PIL import Image
-            import numpy as np
-
-            image = Image.open(uploaded_image)
-            image = image.resize((224, 224))  # Resize to model input shape (adjust as needed)
-            image = np.array(image) / 255.0  # Normalize if needed
-            image = np.expand_dims(image, axis=0)  # Add batch dimension
-
-            # Predict using the loaded model
-            predictions = model.predict(image)
-
-            # Show the predictions
-            st.write(f"Prediction: {predictions}")
-        
-    except Exception as e:
-        st.error(f"Error loading model or weights: {e}")
+    # If you want to apply disease detection, this is where you'd load your own model
+    # Example: 
+    # model = load_model("your_plant_disease_model.h5")
+    # disease_predictions = model.predict(image_array)
+    # st.write(f"Detected Disease: {disease_predictions}")
 
