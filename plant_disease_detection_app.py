@@ -6,8 +6,8 @@ from tensorflow.keras.models import load_model
 import cv2
 
 # Load your custom-trained plant disease model (replace with the correct path)
-# Ensure the model has been trained to classify Rust, Powdery Mildew, and Healthy
-model = load_model("path_to_your_plant_disease_model.h5")
+# Ensure the model has been trained to classify Healthy, Rust, and Powdery Mildew
+model = load_model("path_to_your_plant_disease_model.h5")  # Replace with your model's path
 
 # Title of the app
 st.title("🌿 Plant Disease Detection App")
