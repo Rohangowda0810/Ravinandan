@@ -1,50 +1,54 @@
-
-import os
+import streamlit as st
+from tensorflow.keras.models import load_model
 import tensorflow as tf
-import numpy as np
-from tensorflow.keras.preprocessing import image
-from PIL import Image
-import cv2
-from keras.models import load_model
-from flask import Flask, request, render_template
-from werkzeug.utils import secure_filename
-from tensorflow.keras.preprocessing.image import load_img, img_to_array
-app = Flask(__name__)
 
-model =load_model('model.h5')
-print('Model loaded. Check http://127.0.0.1:5000/')
+# Title of the app
+st.title("Plant Disease Detection App")
 
-labels = {0: 'Healthy', 1: 'Powdery', 2: 'Rust'}
+# File uploader for model architecture (.h5)
+model_file = st.file_uploader("Upload Model Architecture (.h5)", type=["h5"])
 
+# File uploader for model weights (.h5)
+weights_file = st.file_uploader("Upload Model Weights (.h5)", type=["h5"])
 
-def getResult(image_path):
-    img = load_img(image_path, target_size=(225,225))
-    x = img_to_array(img)
-    x = x.astype('float32') / 255.
-    x = np.expand_dims(x, axis=0)
-    predictions = model.predict(x)[0]
-    return predictions
+# Button to trigger model loading after files are uploaded
+if model_file and weights_file:
+    try:
+        # Load the model architecture without weights
+        model = load_model(model_file, compile=False)
 
+        # Load the weights separately
+        model.load_weights(weights_file)
 
-@app.route('/', methods=['GET'])
-def index():
-    return render_template('index.html')
+        # Output message
+        st.write("Model and weights loaded successfully!")
 
+        # Model summary (for debugging and confirmation)
+        st.text_area("Model Summary", model.summary(), height=200)
 
-@app.route('/predict', methods=['GET', 'POST'])
-def upload():
-    if request.method == 'POST':
-        f = request.files['file']
+        # Example: You can now use the model to make predictions if you have input data
+        # For example, an image upload for prediction:
 
-        basepath = os.path.dirname(__file__)
-        file_path = os.path.join(
-            basepath, 'uploads', secure_filename(f.filename))
-        f.save(file_path)
-        predictions=getResult(file_path)
-        predicted_label = labels[np.argmax(predictions)]
-        return str(predicted_label)
-    return None
+        uploaded_image = st.file_uploader("Upload an image for prediction", type=["jpg", "png", "jpeg"])
 
+        if uploaded_image:
+            # Preprocess the image for prediction (resize, normalization, etc.)
+            # Assuming image preprocessing code is defined here:
+            # You can use PIL or OpenCV to preprocess the image
+            from PIL import Image
+            import numpy as np
 
-if __name__ == '__main__':
-    app.run(debug=True)
+            image = Image.open(uploaded_image)
+            image = image.resize((224, 224))  # Resize to model input shape (adjust as needed)
+            image = np.array(image) / 255.0  # Normalize if needed
+            image = np.expand_dims(image, axis=0)  # Add batch dimension
+
+            # Predict using the loaded model
+            predictions = model.predict(image)
+
+            # Show the predictions
+            st.write(f"Prediction: {predictions}")
+        
+    except Exception as e:
+        st.error(f"Error loading model or weights: {e}")
+
