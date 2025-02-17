@@ -16,20 +16,29 @@ part2_url = 'https://github.com/yourusername/yourrepo/raw/main/model_part2'  # R
 def download_and_merge_model():
     model_path = 'model.h5'
     
-    # Download the model parts from GitHub
-    response1 = requests.get(part1_url)
-    response2 = requests.get(part2_url)
-    
-    if response1.status_code == 200 and response2.status_code == 200:
-        # Merge the parts
+    try:
+        # Download the model parts from GitHub
+        response1 = requests.get(part1_url)
+        response2 = requests.get(part2_url)
+        
+        # Check if the download was successful
+        if response1.status_code != 200:
+            print(f"Error downloading part1: {response1.status_code} - {response1.text}")
+            return False
+        if response2.status_code != 200:
+            print(f"Error downloading part2: {response2.status_code} - {response2.text}")
+            return False
+
+        # Merge the parts into one file
         with open(model_path, 'wb') as f:
             f.write(response1.content)
             f.write(response2.content)
         print("Model parts downloaded and merged into 'model.h5'.")
-    else:
-        print("Error downloading model parts.")
-        return False
     
+    except Exception as e:
+        print(f"Error downloading or merging the model parts: {str(e)}")
+        return False
+
     return True
 
 # Ensure model is downloaded and merged
